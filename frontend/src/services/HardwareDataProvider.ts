@@ -14,21 +14,64 @@ export type ModeChangeListener = (
 ) => void;
 
 export class HardwareDataProvider {
-  private currentMode: SystemMode = 'SIMULATION'; // Default simulation for immediate demonstration readiness
+  private currentMode: SystemMode = 'SIMULATION'; // Default simulation
   private nodes: NodeTelemetry[] = [];
   private links: DisplacementLink[] = [];
   private alerts: SystemAlert[] = [];
   private historyBuffer: TelemetryHistoryPoint[] = [];
   private listeners: Set<ModeChangeListener> = new Set();
+  private broadcastChannel: BroadcastChannel | null = null;
+  private isBroadcastingRemote: boolean = false;
 
   private isHardwareConnected: boolean = false;
   private lastPacketTime: string | null = null;
   private statusMessage: string = 'SIMULATION MODE Active';
 
   constructor() {
-    // Start default simulation engine
+    if (typeof localStorage !== 'undefined') {
+      const savedMode = localStorage.getItem('mineguard_mode') as SystemMode;
+      if (savedMode) {
+        this.currentMode = savedMode;
+      }
+    }
+
+    // Setup Cross-Tab Realtime Broadcast Channel Synchronization
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      this.broadcastChannel = new BroadcastChannel('mineguard_telemetry_sync');
+      this.broadcastChannel.onmessage = (event) => {
+        const data = event.data;
+        if (!data) return;
+
+        if (data.type === 'TELEMETRY_SYNC') {
+          this.isBroadcastingRemote = true;
+          this.nodes = data.nodes;
+          this.links = data.links;
+          this.currentMode = data.mode;
+          this.isHardwareConnected = data.isHardwareConnected;
+          this.lastPacketTime = data.lastPacketTime;
+          
+          if (data.historyPoint) {
+            this.historyBuffer.push(data.historyPoint);
+            if (this.historyBuffer.length > 40) this.historyBuffer.shift();
+          }
+          this.notifyListeners();
+          this.isBroadcastingRemote = false;
+        } else if (data.type === 'MODE_CHANGE') {
+          this.currentMode = data.mode;
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('mineguard_mode', data.mode);
+          }
+          this.notifyListeners();
+        } else if (data.type === 'SCENARIO_CHANGE') {
+          simulationEngine.setScenario(data.scenario, data.stage);
+        }
+      };
+    }
+
+    // Start simulation engine
     this.initSimulation();
   }
+
 
   getMode(): SystemMode {
     return this.currentMode;
@@ -70,6 +113,13 @@ export class HardwareDataProvider {
     }
 
     this.currentMode = newMode;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('mineguard_mode', newMode);
+    }
+
+    if (this.broadcastChannel) {
+      this.broadcastChannel.postMessage({ type: 'MODE_CHANGE', mode: newMode });
+    }
 
     if (newMode === 'SIMULATION') {
       this.isHardwareConnected = false;
@@ -114,6 +164,9 @@ export class HardwareDataProvider {
   setSimulationScenario(scenario: SimulationScenario, stage: number = 1) {
     if (this.currentMode === 'SIMULATION') {
       simulationEngine.setScenario(scenario, stage);
+      if (this.broadcastChannel) {
+        this.broadcastChannel.postMessage({ type: 'SCENARIO_CHANGE', scenario, stage });
+      }
     }
   }
 
@@ -124,6 +177,8 @@ export class HardwareDataProvider {
   }
 
   private handleTelemetryUpdate(nodes: NodeTelemetry[], links: DisplacementLink[]) {
+    if (this.isBroadcastingRemote) return;
+
     this.nodes = nodes;
     this.links = links;
     this.lastPacketTime = new Date().toISOString();
@@ -163,6 +218,19 @@ export class HardwareDataProvider {
       this.historyBuffer.shift();
     }
 
+    // Broadcast update across open browser tabs
+    if (this.broadcastChannel) {
+      this.broadcastChannel.postMessage({
+        type: 'TELEMETRY_SYNC',
+        nodes: this.nodes,
+        links: this.links,
+        mode: this.currentMode,
+        isHardwareConnected: this.isHardwareConnected,
+        lastPacketTime: this.lastPacketTime,
+        historyPoint,
+      });
+    }
+
     // Check for alerts
     this.evaluateAlerts(nodes);
 
@@ -173,6 +241,7 @@ export class HardwareDataProvider {
 
     this.notifyListeners();
   }
+
 
   private evaluateAlerts(nodes: NodeTelemetry[]) {
     for (const node of nodes) {

@@ -18,14 +18,32 @@ export class SimulationEngine {
     'N4': { lat: 23.7575, lng: 86.4146 },
   };
 
+  constructor() {
+    if (typeof localStorage !== 'undefined') {
+      const savedScenario = localStorage.getItem('mineguard_scenario') as SimulationScenario;
+      const savedStage = parseInt(localStorage.getItem('mineguard_stage') || '1', 10);
+      if (savedScenario) {
+        this.scenario = savedScenario;
+      }
+      if (!isNaN(savedStage)) {
+        this.stage = Math.min(Math.max(savedStage, 1), 5);
+      }
+    }
+  }
+
   setScenario(scenario: SimulationScenario, stage: number = 1) {
     this.scenario = scenario;
     this.stage = Math.min(Math.max(stage, 1), 5);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('mineguard_scenario', scenario);
+      localStorage.setItem('mineguard_stage', this.stage.toString());
+    }
   }
 
   getScenario(): { scenario: SimulationScenario; stage: number } {
     return { scenario: this.scenario, stage: this.stage };
   }
+
 
   start(callback: (nodes: NodeTelemetry[], links: DisplacementLink[]) => void) {
     this.onDataCallback = callback;

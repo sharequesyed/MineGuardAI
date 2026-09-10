@@ -20,7 +20,7 @@ export const AlertsDrawerModal: React.FC<AlertsDrawerModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end font-body">
+    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex justify-end font-body">
       <div className="bg-white dark:bg-industrial-900 border-l border-industrial-200 dark:border-industrial-800 w-full max-w-md h-full flex flex-col shadow-2xl">
         
         {/* Drawer Header */}

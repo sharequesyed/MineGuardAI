@@ -186,11 +186,11 @@ export const GisMap: React.FC<GisMapProps> = ({
   }, [nodes, links, riskAssessment, onSelectNode]);
 
   return (
-    <div className="relative w-full rounded-lg overflow-hidden border border-industrial-200 dark:border-industrial-800 shadow-sm" style={{ height }}>
+    <div className="relative z-0 isolate w-full rounded-lg overflow-hidden border border-industrial-200 dark:border-industrial-800 shadow-sm" style={{ height }}>
       <div ref={mapContainerRef} className="w-full h-full" />
 
       {/* Demonstration Site Layout Overlay Badge (Priority 5: GIS Data Honesty) */}
-      <div className="absolute top-3 left-12 z-[400] bg-industrial-900/90 text-white backdrop-blur-md px-3.5 py-2 rounded-md border border-industrial-700 shadow-md text-xs font-mono pointer-events-none">
+      <div className="absolute top-3 left-12 z-10 bg-industrial-900/90 text-white backdrop-blur-md px-3.5 py-2 rounded-md border border-industrial-700 shadow-md text-xs font-mono pointer-events-none">
         <span className="font-bold text-amber-400 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
           DEMONSTRATION SITE LAYOUT
@@ -201,7 +201,7 @@ export const GisMap: React.FC<GisMapProps> = ({
       </div>
       
       {/* Map Legend Overlay */}
-      <div className="absolute bottom-3 right-3 z-[400] bg-white/90 dark:bg-industrial-900/90 backdrop-blur-md p-3 rounded-md border border-industrial-200 dark:border-industrial-800 text-[11px] font-body shadow-md">
+      <div className="absolute bottom-3 right-3 z-10 bg-white/90 dark:bg-industrial-900/90 backdrop-blur-md p-3 rounded-md border border-industrial-200 dark:border-industrial-800 text-[11px] font-body shadow-md">
         <p className="font-bold font-heading text-industrial-900 dark:text-white mb-1.5">Map Legend</p>
         <div className="space-y-1">
           <div className="flex items-center space-x-2">

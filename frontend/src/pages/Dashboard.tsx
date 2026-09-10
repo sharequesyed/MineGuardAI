@@ -72,7 +72,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* Top Metrics & AI Risk Overview Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         
-        {/* Card 1: AI Risk Status */}
+        {/* Card 1: Surface Subsidence Risk Status (Priority 6) */}
         <div className={`p-4 rounded-lg border shadow-sm flex flex-col justify-between ${
           riskAssessment.risk_level === 'CRITICAL'
             ? 'bg-red-50/80 border-red-200 dark:bg-red-950/30 dark:border-red-900'
@@ -82,7 +82,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         }`}>
           <div>
             <div className="flex items-center justify-between text-xs text-industrial-500 font-heading">
-              <span>AI Surface Risk Level</span>
+              <span className="font-bold tracking-tight uppercase text-industrial-700 dark:text-industrial-300">SURFACE SUBSIDENCE RISK</span>
               <ShieldAlert className={`w-4 h-4 ${
                 riskAssessment.risk_level === 'CRITICAL' ? 'text-status-critical' : 'text-status-warning'
               }`} />
@@ -102,9 +102,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </span>
             </div>
           </div>
-          <p className="text-[11px] text-industrial-600 dark:text-industrial-400 mt-2 font-mono line-clamp-2">
-            {riskAssessment.primary_factor}
-          </p>
+          <div className="mt-2 pt-2 border-t border-industrial-200/60 dark:border-industrial-800/60 flex items-center justify-between text-[11px] font-mono">
+            <span className="text-industrial-500">Assessment:</span>
+            <span className="font-semibold text-industrial-800 dark:text-industrial-200 bg-industrial-100 dark:bg-industrial-800 px-1.5 py-0.5 rounded">
+              {riskAssessment.assessment_source || 'Local Rule Engine'}
+            </span>
+          </div>
         </div>
 
         {/* Card 2: Active Surface Nodes */}

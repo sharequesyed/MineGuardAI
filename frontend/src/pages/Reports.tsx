@@ -18,11 +18,11 @@ export const Reports: React.FC<ReportsProps> = ({ nodes, links, riskAssessment, 
     <div className="space-y-6 font-body">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold font-heading text-industrial-900 dark:text-white flex items-center gap-2">
-            <FileText className="w-5 h-5 text-amber-500" />
+          <h2 className="text-xl md:text-2xl font-bold font-heading text-industrial-900 dark:text-white flex items-center gap-2">
+            <FileText className="w-6 h-6 text-amber-500" />
             Surface Subsidence Monitoring Event Summary
           </h2>
-          <p className="text-xs text-industrial-500 dark:text-industrial-400">
+          <p className="text-sm text-industrial-600 dark:text-industrial-400 mt-1">
             Generate and export printable surface deformation report summaries for mine operators.
           </p>
         </div>

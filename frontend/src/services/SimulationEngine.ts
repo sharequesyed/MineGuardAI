@@ -83,9 +83,25 @@ export class SimulationEngine {
       let status: NodeStatus = 'SAFE';
       let isOffline = false;
 
-      // Multi-hop routing defaults
+      // Multi-hop routing defaults (Deterministic Multi-Hop Specification)
+      // Primary Route: N1 -> N2 -> GW01 (Hop count: 2)
+      // Backup Route: N1 -> N3 -> GW01 (Hop count: 2) when N2 is OFFLINE
       let currentRelay = 'GW01';
       let hopCount = 1;
+
+      if (id === 'N1') {
+        currentRelay = 'N2'; // Primary relay via N2
+        hopCount = 2;
+      } else if (id === 'N2') {
+        currentRelay = 'GW01'; // Direct to Gateway
+        hopCount = 1;
+      } else if (id === 'N3') {
+        currentRelay = 'GW01'; // Direct to Gateway
+        hopCount = 1;
+      } else if (id === 'N4') {
+        currentRelay = 'GW01'; // Direct to Gateway
+        hopCount = 1;
+      }
 
       if (this.scenario === 'NORMAL') {
         // Standard safe baseline
@@ -137,7 +153,7 @@ export class SimulationEngine {
           isOffline = true;
           status = 'OFFLINE';
         } else if (id === 'N1') {
-          // N1 relies on N3 as multi-hop relay when N2 is offline
+          // Deterministic backup route activated: N1 -> N3 -> GW01
           currentRelay = 'N3';
           hopCount = 2;
         }
@@ -152,11 +168,12 @@ export class SimulationEngine {
       const header: MultiHopHeader = {
         packet_id: `PKT_${this.sequence}_${id}`,
         source_node: id,
-        current_relay: currentRelay,
+        current_relay: isOffline ? 'NONE' : currentRelay,
         destination: 'GW01',
-        hop_count: hopCount,
+        hop_count: isOffline ? 0 : hopCount,
         ttl: 10 - hopCount,
         sequence: this.sequence,
+        route_status: isOffline ? 'RELAY_FAILED' : (currentRelay === 'N3' ? 'BACKUP_ACTIVE' : 'PRIMARY_ACTIVE'),
       };
 
       nodes.push({

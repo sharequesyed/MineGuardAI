@@ -1,18 +1,26 @@
 import { NodeTelemetry, AIRiskAssessment, RiskLevel } from '../types/telemetry';
 
 export class BrowserRiskCalculator {
-  static evaluate(nodes: NodeTelemetry[]): AIRiskAssessment {
+  static evaluate(nodes: NodeTelemetry[], mode: string = 'SIMULATION'): AIRiskAssessment {
+    const assessmentSource = mode === 'SIMULATION' 
+      ? 'Assessment: Simulation Engine' 
+      : mode === 'CLOUD' 
+        ? 'Assessment: ML Model' 
+        : 'Assessment: Local Rule Engine';
+
     if (!nodes || nodes.length === 0) {
       return {
         risk_level: 'SAFE',
         risk_score: 0.05,
         affected_nodes: [],
         primary_factor: 'No active node data available.',
+        assessment_source: assessmentSource,
         model_type: 'RULE_ENGINE_FALLBACK',
         dataset_label: 'Local rule engine evaluation (Backend ML offline)',
         calculated_at: new Date().toISOString(),
       };
     }
+
 
     let maxRiskScore = 0.05;
     let highestLevel: RiskLevel = 'SAFE';
@@ -80,9 +88,11 @@ export class BrowserRiskCalculator {
       risk_score: parseFloat(maxRiskScore.toFixed(2)),
       affected_nodes: Array.from(new Set(affectedNodes)),
       primary_factor: primaryFactor,
+      assessment_source: assessmentSource,
       model_type: 'RULE_ENGINE_FALLBACK',
       dataset_label: 'Local rule engine evaluation (Backend ML offline)',
       calculated_at: new Date().toISOString(),
     };
   }
 }
+

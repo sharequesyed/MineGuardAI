@@ -5,7 +5,7 @@ import { HardwareSelectorModal } from './components/HardwareSelectorModal';
 import { AlertsDrawerModal } from './components/AlertsDrawerModal';
 
 import { hardwareDataProvider } from './services/HardwareDataProvider';
-import { NodeTelemetry, DisplacementLink, SystemAlert, SystemMode, TelemetryHistoryPoint } from './types/telemetry';
+import { NodeTelemetry, DisplacementLink, SystemAlert, SystemMode, TelemetryHistoryPoint, Incident } from './types/telemetry';
 
 import { Dashboard } from './pages/Dashboard';
 import { LiveMap } from './pages/LiveMap';
@@ -28,6 +28,7 @@ export function App() {
   const [nodes, setNodes] = useState<NodeTelemetry[]>([]);
   const [links, setLinks] = useState<DisplacementLink[]>([]);
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [historyBuffer, setHistoryBuffer] = useState<TelemetryHistoryPoint[]>([]);
   const [isHardwareConnected, setIsHardwareConnected] = useState<boolean>(false);
   const [lastPacketTime, setLastPacketTime] = useState<string | null>(null);
@@ -49,13 +50,14 @@ export function App() {
   // Subscribe to hardware data provider
   useEffect(() => {
     const unsubscribe = hardwareDataProvider.subscribe(
-      (currentMode, updatedNodes, updatedLinks, connected, lastPacket, updatedHistory) => {
+      (currentMode, updatedNodes, updatedLinks, connected, lastPacket, updatedHistory, updatedIncidents) => {
         setMode(currentMode);
         setNodes(updatedNodes);
         setLinks(updatedLinks);
         setIsHardwareConnected(connected);
         setLastPacketTime(lastPacket);
         setHistoryBuffer([...updatedHistory]);
+        setIncidents([...updatedIncidents]);
         setAlerts([...hardwareDataProvider.getAlerts()]);
       }
     );
@@ -70,9 +72,14 @@ export function App() {
     hardwareDataProvider.setSimulationScenario(scenario, stage);
   };
 
-  const handleAcknowledgeAlert = async (id: string) => {
-    await hardwareDataProvider.acknowledgeAlert(id);
-    setAlerts([...hardwareDataProvider.getAlerts()]);
+  const handleAcknowledgeIncident = async (id: string) => {
+    await hardwareDataProvider.acknowledgeIncident(id);
+    setIncidents([...hardwareDataProvider.getIncidents()]);
+  };
+
+  const handleViewZone = (_nodeId?: string) => {
+    setActivePage('map');
+    setIsAlertsModalOpen(false);
   };
 
   const riskAssessment = hardwareDataProvider.getRiskAssessment();
@@ -85,7 +92,7 @@ export function App() {
         mode={mode}
         isHardwareConnected={isHardwareConnected}
         lastPacketTime={lastPacketTime}
-        alerts={alerts}
+        incidents={incidents}
         darkMode={darkMode}
         onToggleDarkMode={() => setDarkMode(!darkMode)}
         onOpenHardwareModal={() => setIsHardwareModalOpen(true)}
@@ -140,7 +147,11 @@ export function App() {
           )}
 
           {activePage === 'alerts' && (
-            <Alerts alerts={alerts} onAcknowledge={handleAcknowledgeAlert} />
+            <Alerts
+              incidents={incidents}
+              onAcknowledge={handleAcknowledgeIncident}
+              onViewZone={handleViewZone}
+            />
           )}
 
           {activePage === 'history' && (
@@ -176,8 +187,9 @@ export function App() {
       <AlertsDrawerModal
         isOpen={isAlertsModalOpen}
         onClose={() => setIsAlertsModalOpen(false)}
-        alerts={alerts}
-        onAcknowledge={handleAcknowledgeAlert}
+        incidents={incidents}
+        onAcknowledge={handleAcknowledgeIncident}
+        onViewZone={handleViewZone}
       />
 
     </div>

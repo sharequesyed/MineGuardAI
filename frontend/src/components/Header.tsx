@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, 
   Usb, 
@@ -8,18 +8,21 @@ import {
   Sun, 
   Moon, 
   Bell, 
+  BellRing,
   Database,
   Radio,
   Menu,
-  X
+  X,
+  BellOff
 } from 'lucide-react';
-import { SystemMode, SystemAlert } from '../types/telemetry';
+import { SystemMode, Incident } from '../types/telemetry';
+import { hardwareDataProvider } from '../services/HardwareDataProvider';
 
 interface HeaderProps {
   mode: SystemMode;
   isHardwareConnected: boolean;
   lastPacketTime: string | null;
-  alerts: SystemAlert[];
+  incidents: Incident[];
   darkMode: boolean;
   onToggleDarkMode: () => void;
   onOpenHardwareModal: () => void;
@@ -32,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   mode,
   isHardwareConnected,
   lastPacketTime,
-  alerts,
+  incidents,
   darkMode,
   onToggleDarkMode,
   onOpenHardwareModal,
@@ -40,8 +43,23 @@ export const Header: React.FC<HeaderProps> = ({
   isMobileMenuOpen,
   onToggleMobileMenu
 }) => {
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default');
 
-  const unackAlerts = alerts.filter(a => !a.acknowledged);
+  useEffect(() => {
+    setNotifPermission(hardwareDataProvider.getNotificationPermission());
+  }, []);
+
+  const handleEnableNotifications = async () => {
+    const perm = await hardwareDataProvider.requestNotificationPermission();
+    setNotifPermission(perm);
+    if (perm === 'granted') {
+      hardwareDataProvider.sendTestNotification();
+    }
+  };
+
+  const activeIncidents = incidents.filter(i => i.status === 'ACTIVE');
+  const unackActiveIncidents = incidents.filter(i => i.status === 'ACTIVE' && !i.acknowledged);
+
 
   return (
     <header className="bg-white dark:bg-industrial-900 border-b border-industrial-200 dark:border-industrial-800 px-4 py-3 sticky top-0 z-30 transition-colors">
@@ -115,19 +133,32 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Connect Hardware</span>
           </button>
 
-          {/* Alert Notifications Button */}
+          {/* Notification Permission Control Button */}
+          {notifPermission === 'default' && (
+            <button
+              onClick={handleEnableNotifications}
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-semibold rounded bg-amber-500 hover:bg-amber-600 text-white transition shadow-sm"
+              title="Enable Web Browser Notifications"
+            >
+              <BellRing className="w-3.5 h-3.5 animate-bounce" />
+              <span>Enable Notifications</span>
+            </button>
+          )}
+
+          {/* Incident Alert Center Button */}
           <button
             onClick={onOpenAlertsModal}
             className="relative p-2 text-industrial-600 dark:text-industrial-300 hover:bg-industrial-100 dark:hover:bg-industrial-800 rounded-md transition"
-            title="Alert Center"
+            title="Incident Audit Center"
           >
             <Bell className="w-4 h-4" />
-            {unackAlerts.length > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-status-critical text-[10px] font-bold text-white">
-                {unackAlerts.length}
+            {unackActiveIncidents.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-status-critical text-[10px] font-bold text-white shadow-sm">
+                {unackActiveIncidents.length}
               </span>
             )}
           </button>
+
 
           {/* Theme Toggle Button */}
           <button

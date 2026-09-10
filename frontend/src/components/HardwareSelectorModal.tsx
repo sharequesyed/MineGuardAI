@@ -236,21 +236,23 @@ export const HardwareSelectorModal: React.FC<HardwareSelectorModalProps> = ({
                   </button>
                 </div>
 
-                {/* Progressive Subsidence Stage Slider */}
+                {/* Progressive Subsidence Stage Slider (Priority 13) */}
                 {selectedScenario === 'PROGRESSIVE_SUBSIDENCE' && (
-                  <div className="bg-white dark:bg-industrial-800 p-3 rounded-md border border-amber-200 dark:border-amber-900/60 mt-2">
-                    <div className="flex justify-between items-center text-xs mb-1">
-                      <span className="font-semibold text-industrial-800 dark:text-white">
-                        Deformation Stage: <span className="text-amber-600 font-mono">Stage {subsidenceStage}</span>
-                      </span>
-                      <span className="text-[10px] text-industrial-500">
-                        {subsidenceStage === 1 && 'All safe'}
-                        {subsidenceStage === 2 && 'Small tilt N3'}
-                        {subsidenceStage === 3 && 'Correlated N3 & N4'}
-                        {subsidenceStage === 4 && 'High risk deformation'}
-                        {subsidenceStage === 5 && 'Critical surface crack event'}
+                  <div className="bg-white dark:bg-industrial-800 p-3.5 rounded-md border border-amber-200 dark:border-amber-900/60 mt-2 space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-industrial-900 dark:text-white font-heading">
+                        Presentation Stage: <span className="text-amber-600 font-mono">Stage {subsidenceStage} of 5</span>
                       </span>
                     </div>
+                    
+                    <div className="p-2.5 bg-amber-50/70 dark:bg-amber-950/40 rounded border border-amber-200/80 dark:border-amber-900/40 text-xs font-mono text-amber-900 dark:text-amber-300">
+                      {subsidenceStage === 1 && 'Stage 1: NORMAL BASELINE — All monitored surface nodes safe. No active incidents.'}
+                      {subsidenceStage === 2 && 'Stage 2: EARLY DEFORMATION — Small tilt change near Node N3. Generates 1 Warning Incident.'}
+                      {subsidenceStage === 3 && 'Stage 3: PROGRESSING DEFORMATION — Correlated displacement N3 & N4. GIS risk region expands.'}
+                      {subsidenceStage === 4 && 'Stage 4: HIGH RISK — Deformation severity increases. Warning escalates to Critical (1 escalation notification).'}
+                      {subsidenceStage === 5 && 'Stage 5: CRITICAL / CRACK EVENT — Surface crack initiation. Local alarm active. Incident remains coherent single entry.'}
+                    </div>
+
                     <input
                       type="range"
                       min="1"
@@ -258,7 +260,7 @@ export const HardwareSelectorModal: React.FC<HardwareSelectorModalProps> = ({
                       step="1"
                       value={subsidenceStage}
                       onChange={(e) => handleScenarioChange('PROGRESSIVE_SUBSIDENCE', parseInt(e.target.value))}
-                      className="w-full h-1.5 bg-industrial-200 dark:bg-industrial-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                      className="w-full h-2 bg-industrial-200 dark:bg-industrial-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
                     />
                   </div>
                 )}

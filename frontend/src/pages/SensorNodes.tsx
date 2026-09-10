@@ -11,11 +11,11 @@ export const SensorNodes: React.FC<SensorNodesProps> = ({ nodes, links }) => {
   return (
     <div className="space-y-6 font-body">
       <div>
-        <h2 className="text-lg font-bold font-heading text-industrial-900 dark:text-white flex items-center gap-2">
-          <Radio className="w-5 h-5 text-amber-500" />
+        <h2 className="text-xl md:text-2xl font-bold font-heading text-industrial-900 dark:text-white flex items-center gap-2">
+          <Radio className="w-6 h-6 text-amber-500" />
           Surface Sensor Nodes (N1–N4)
         </h2>
-        <p className="text-xs text-industrial-500 dark:text-industrial-400">
+        <p className="text-sm text-industrial-600 dark:text-industrial-400 mt-1">
           Telemetry feeds from surface sensor nodes deployed above Coal Panel A-01.
         </p>
       </div>

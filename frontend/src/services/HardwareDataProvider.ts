@@ -1,4 +1,4 @@
-import { SystemMode, NodeTelemetry, DisplacementLink, SystemAlert, AIRiskAssessment, TelemetryHistoryPoint } from '../types/telemetry';
+import { SystemMode, NodeTelemetry, DisplacementLink, SystemAlert, AIRiskAssessment, TelemetryHistoryPoint, Incident } from '../types/telemetry';
 import { simulationEngine, SimulationScenario } from './SimulationEngine';
 import { webSerialProvider } from './WebSerialProvider';
 import { offlineStore } from './IndexedDBStore';
@@ -10,7 +10,8 @@ export type ModeChangeListener = (
   links: DisplacementLink[],
   isHardwareConnected: boolean,
   lastPacketTime: string | null,
-  historyBuffer: TelemetryHistoryPoint[]
+  historyBuffer: TelemetryHistoryPoint[],
+  incidents: Incident[]
 ) => void;
 
 export class HardwareDataProvider {
@@ -18,6 +19,7 @@ export class HardwareDataProvider {
   private nodes: NodeTelemetry[] = [];
   private links: DisplacementLink[] = [];
   private alerts: SystemAlert[] = [];
+  private incidents: Incident[] = [];
   private historyBuffer: TelemetryHistoryPoint[] = [];
   private listeners: Set<ModeChangeListener> = new Set();
   private broadcastChannel: BroadcastChannel | null = null;
@@ -49,6 +51,9 @@ export class HardwareDataProvider {
           this.currentMode = data.mode;
           this.isHardwareConnected = data.isHardwareConnected;
           this.lastPacketTime = data.lastPacketTime;
+          if (data.incidents) {
+            this.incidents = data.incidents;
+          }
           
           if (data.historyPoint) {
             this.historyBuffer.push(data.historyPoint);
@@ -72,7 +77,6 @@ export class HardwareDataProvider {
     this.initSimulation();
   }
 
-
   getMode(): SystemMode {
     return this.currentMode;
   }
@@ -93,10 +97,14 @@ export class HardwareDataProvider {
     return this.historyBuffer;
   }
 
+  getIncidents(): Incident[] {
+    return this.incidents;
+  }
+
   subscribe(listener: ModeChangeListener): () => void {
     this.listeners.add(listener);
     // Initial notification
-    listener(this.currentMode, this.nodes, this.links, this.isHardwareConnected, this.lastPacketTime, this.historyBuffer);
+    listener(this.currentMode, this.nodes, this.links, this.isHardwareConnected, this.lastPacketTime, this.historyBuffer, this.incidents);
     return () => {
       this.listeners.delete(listener);
     };
@@ -148,12 +156,12 @@ export class HardwareDataProvider {
       return success;
     } else if (newMode === 'LOCAL_GATEWAY') {
       this.isHardwareConnected = false;
-      this.statusMessage = 'REQUIRES CONFIGURATION — ESP32 Local Wi-Fi Gateway Endpoint';
+      this.statusMessage = 'LOCAL GATEWAY UNREACHABLE — Requires Configuration';
       this.notifyListeners();
       return true;
     } else if (newMode === 'CLOUD') {
       this.isHardwareConnected = false;
-      this.statusMessage = 'REQUIRES CONFIGURATION — Cloud MQTT / Backend Endpoint';
+      this.statusMessage = 'CLOUD BACKEND OFFLINE / NOT CONFIGURED';
       this.notifyListeners();
       return true;
     }
@@ -218,6 +226,9 @@ export class HardwareDataProvider {
       this.historyBuffer.shift();
     }
 
+    // Evaluate Incident-Based Lifecycle (Priority 1 & Priority 2)
+    this.evaluateIncidentLifecycle(nodes, links);
+
     // Broadcast update across open browser tabs
     if (this.broadcastChannel) {
       this.broadcastChannel.postMessage({
@@ -228,11 +239,9 @@ export class HardwareDataProvider {
         isHardwareConnected: this.isHardwareConnected,
         lastPacketTime: this.lastPacketTime,
         historyPoint,
+        incidents: this.incidents,
       });
     }
-
-    // Check for alerts
-    this.evaluateAlerts(nodes);
 
     // Queue readings to IndexedDB if offline or storing history
     for (const node of nodes) {
@@ -242,67 +251,176 @@ export class HardwareDataProvider {
     this.notifyListeners();
   }
 
+  // Priority 1: Incident-Based Lifecycle Evaluator (NO ALERT FLOODING)
+  private evaluateIncidentLifecycle(nodes: NodeTelemetry[], links: DisplacementLink[]) {
+    const abnormalNodes = nodes.filter(n => n.status === 'WARNING' || n.status === 'CRITICAL');
+    const nowIso = new Date().toISOString();
 
-  private evaluateAlerts(nodes: NodeTelemetry[]) {
-    for (const node of nodes) {
-      if (node.status === 'CRITICAL' || node.status === 'WARNING') {
-        const existingRecent = this.alerts.find(
-          a => a.node_ids.includes(node.node_id) && 
-          (Date.now() - new Date(a.timestamp).getTime()) < 30000 // 30 sec debounce
+    // Check if an existing ACTIVE or ACKNOWLEDGED incident exists
+    const activeIncident = this.incidents.find(inc => inc.status === 'ACTIVE' || inc.status === 'ACKNOWLEDGED');
+
+    if (abnormalNodes.length === 0) {
+      // All nodes returned to SAFE -> Resolve active incident if present
+      if (activeIncident) {
+        activeIncident.status = 'RESOLVED';
+        activeIncident.resolved_at = nowIso;
+        activeIncident.updated_at = nowIso;
+      }
+      return;
+    }
+
+    // Determine highest current severity among abnormal nodes
+    const hasCritical = abnormalNodes.some(n => n.status === 'CRITICAL');
+    const currentSeverity: 'WARNING' | 'CRITICAL' = hasCritical ? 'CRITICAL' : 'WARNING';
+    const abnormalNodeIds = abnormalNodes.map(n => n.node_id);
+
+    const primaryNode = abnormalNodes[0];
+    const link34 = links.find(l => l.link_id === 'L34');
+
+    const latestSnapshot = {
+      tilt_mag: primaryNode.tilt_magnitude_deg,
+      disp_mm: link34 ? link34.relative_displacement_mm : primaryNode.displacement_mm,
+      vib_rms: primaryNode.vibration_rms,
+      crack: abnormalNodes.some(n => n.crack_detected),
+    };
+
+    if (!activeIncident) {
+      // 1. SAFE -> WARNING/CRITICAL: Create 1 NEW Incident
+      const newIncident: Incident = {
+        incident_id: `INC_${Date.now()}_${abnormalNodeIds.join('_')}`,
+        node_ids: abnormalNodeIds,
+        zone_link: `Zone Panel A-01 (${abnormalNodeIds.join('–')})`,
+        severity: currentSeverity,
+        status: 'ACTIVE',
+        created_at: nowIso,
+        updated_at: nowIso,
+        acknowledged: false,
+        latest_snapshot: latestSnapshot,
+        source_mode: this.currentMode,
+      };
+
+      this.incidents.unshift(newIncident);
+
+      // Trigger ONE initial native notification
+      this.sendNativeNotification(
+        `MineGuard-AI — ${this.currentMode === 'SIMULATION' ? 'SIMULATION ' : ''}${currentSeverity}`,
+        `Abnormal surface deformation detected near Node ${abnormalNodeIds.join(', ')}. Risk level: ${currentSeverity}. Open MineGuard-AI to inspect affected zone.`
+      );
+
+    } else {
+      // Incident exists: Check for Escalation or Telemetry Update
+      activeIncident.updated_at = nowIso;
+      activeIncident.latest_snapshot = latestSnapshot;
+
+      if (activeIncident.severity === 'WARNING' && currentSeverity === 'CRITICAL') {
+        // 2. WARNING -> CRITICAL: Escalate Existing Incident
+        activeIncident.severity = 'CRITICAL';
+        activeIncident.escalated_at = nowIso;
+        if (activeIncident.status === 'ACKNOWLEDGED') {
+          activeIncident.status = 'ACTIVE'; // Re-activate for escalation visibility
+          activeIncident.acknowledged = false;
+        }
+
+        // Trigger ONE escalation notification
+        this.sendNativeNotification(
+          `MineGuard-AI — ${this.currentMode === 'SIMULATION' ? 'SIMULATION ' : ''}CRITICAL`,
+          `Critical surface deformation detected near Nodes ${abnormalNodeIds.join('–')}. Immediate inspection recommended.`
         );
 
-        if (!existingRecent) {
-          const alert: SystemAlert = {
-            id: `ALT_${Date.now()}_${node.node_id}`,
-            timestamp: new Date().toISOString(),
-            severity: node.status === 'CRITICAL' ? 'CRITICAL' : 'WARNING',
-            node_ids: [node.node_id],
-            message: node.crack_detected 
-              ? `CRITICAL: Surface crack bridge continuity broken at ${node.node_id}`
-              : `${node.status}: Abnormal surface deformation detected at ${node.node_id} (Tilt: ${node.tilt_magnitude_deg}°, Disp: ${node.displacement_mm}mm)`,
-            value_summary: `Tilt: ${node.tilt_magnitude_deg}°, Disp: ${node.displacement_mm}mm, Vib: ${node.vibration_rms}g`,
-            acknowledged: false,
-            connection_mode: this.currentMode,
-          };
-
-          this.alerts.unshift(alert);
-          offlineStore.saveAlert(alert);
-
-          // Browser Web Notification API trigger
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-            new Notification(`MineGuard-AI ${alert.severity}`, {
-              body: alert.message,
-              icon: '/pwa-192x192.png',
-            });
-          }
-        }
+      } else {
+        // 3. WARNING remains WARNING, or CRITICAL remains CRITICAL:
+        // Update telemetry snapshot on existing incident; DO NOT generate duplicate notifications or duplicate incidents!
       }
     }
   }
 
+  // Priority 2: Native Web/Browser Notification Handler
+  async requestNotificationPermission(): Promise<NotificationPermission | 'unsupported'> {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      return 'unsupported';
+    }
+    const permission = await Notification.requestPermission();
+    return permission;
+  }
+
+  getNotificationPermission(): NotificationPermission | 'unsupported' {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      return 'unsupported';
+    }
+    return Notification.permission;
+  }
+
+  sendTestNotification() {
+    this.sendNativeNotification(
+      'MineGuard-AI System Test',
+      'Notification system test successful. Hardware/Browser notification service ready.'
+    );
+  }
+
+  private async sendNativeNotification(title: string, body: string) {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      return;
+    }
+
+    if (Notification.permission !== 'granted') {
+      return;
+    }
+
+    try {
+      // Prefer Service Worker Notification if registered & active
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg && reg.showNotification) {
+          await reg.showNotification(title, {
+            body,
+            icon: '/pwa-192x192.png',
+            badge: '/pwa-192x192.png',
+            tag: 'mineguard-safety-incident',
+            data: { url: '/alerts' },
+          });
+          return;
+        }
+      }
+
+      // Standard Notification fallback
+      const n = new Notification(title, {
+        body,
+        icon: '/pwa-192x192.png',
+        tag: 'mineguard-safety-incident',
+      });
+      n.onclick = () => {
+        window.focus();
+      };
+    } catch (e) {
+      // Ignore notification launch block
+    }
+  }
+
   getRiskAssessment(): AIRiskAssessment {
-    return BrowserRiskCalculator.evaluate(this.nodes);
+    return BrowserRiskCalculator.evaluate(this.nodes, this.currentMode);
   }
 
   getAlerts(): SystemAlert[] {
     return this.alerts;
   }
 
-  async acknowledgeAlert(id: string) {
-    const alert = this.alerts.find(a => a.id === id);
-    if (alert) {
-      alert.acknowledged = true;
-      await offlineStore.acknowledgeAlert(id);
+  async acknowledgeIncident(id: string) {
+    const inc = this.incidents.find(i => i.incident_id === id);
+    if (inc) {
+      inc.acknowledged = true;
+      inc.status = 'ACKNOWLEDGED';
+      inc.acknowledged_at = new Date().toISOString();
       this.notifyListeners();
     }
   }
 
   private notifyListeners() {
     for (const listener of this.listeners) {
-      listener(this.currentMode, this.nodes, this.links, this.isHardwareConnected, this.lastPacketTime, this.historyBuffer);
+      listener(this.currentMode, this.nodes, this.links, this.isHardwareConnected, this.lastPacketTime, this.historyBuffer, this.incidents);
     }
   }
 }
 
 export const hardwareDataProvider = new HardwareDataProvider();
+
 

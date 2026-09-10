@@ -11,26 +11,31 @@ export const AIAnalysis: React.FC<AIAnalysisProps> = ({ riskAssessment, nodes })
   return (
     <div className="space-y-6 font-body">
       <div>
-        <h2 className="text-lg font-bold font-heading text-industrial-900 dark:text-white flex items-center gap-2">
-          <BrainCircuit className="w-5 h-5 text-purple-500" />
+        <h2 className="text-xl md:text-2xl font-bold font-heading text-industrial-900 dark:text-white flex items-center gap-2">
+          <BrainCircuit className="w-6 h-6 text-purple-500" />
           AI / ML Surface Risk Assessment Engine
         </h2>
-        <p className="text-xs text-industrial-500 dark:text-industrial-400">
+        <p className="text-sm text-industrial-600 dark:text-industrial-400 mt-1">
           Spatial-temporal feature matrix evaluation via Random Forest classifier & local rule fallback engine.
         </p>
       </div>
 
-      {/* Mandatory Honest Dataset Label Banner */}
-      <div className="p-4 bg-industrial-100 dark:bg-industrial-800 border border-industrial-300 dark:border-industrial-700 rounded-lg text-xs font-mono space-y-1">
-        <div className="flex items-center space-x-2 font-bold text-industrial-800 dark:text-industrial-200">
-          <Database className="w-4 h-4 text-purple-500" />
-          <span>DATASET & VALIDATION DISCLAIMER</span>
+      {/* Mandatory Honest Dataset Label Banner (Priority 6) */}
+      <div className="p-4 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-lg text-xs font-mono space-y-2 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 font-bold text-purple-900 dark:text-purple-300 text-sm">
+            <Cpu className="w-4 h-4 text-purple-500" />
+            <span>DEMONSTRATION ML MODEL — SYNTHETIC TRAINING DATA</span>
+          </div>
+          <span className="px-2.5 py-0.5 rounded bg-purple-200 text-purple-900 dark:bg-purple-900 dark:text-purple-200 font-bold text-[10px] uppercase">
+            Not Field Validated
+          </span>
         </div>
-        <p className="text-industrial-600 dark:text-industrial-400">
-          Status: <span className="font-semibold text-amber-700 dark:text-amber-300">{riskAssessment.dataset_label}</span>
+        <p className="text-purple-800 dark:text-purple-300 text-xs">
+          Assessment Source: <span className="font-bold underline">{riskAssessment.assessment_source || 'Local Rule Engine'}</span> &bull; Status: <span className="font-semibold">{riskAssessment.dataset_label}</span>
         </p>
-        <p className="text-[10px] text-industrial-500 leading-relaxed">
-          * Notice: MineGuard-AI is a student prototype platform. Validation scores reflect performance on a synthetic surface deformation dataset and do not constitute certified mine collapse prediction accuracy.
+        <p className="text-[11px] text-purple-700 dark:text-purple-400 leading-relaxed">
+          Notice: MineGuard-AI is a student prototype platform. Model accuracy reflects performance on synthetic surface deformation datasets and does not constitute certified mine safety or collapse prediction accuracy.
         </p>
       </div>
 

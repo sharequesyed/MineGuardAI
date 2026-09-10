@@ -10,7 +10,7 @@ import {
   Cpu, 
   Maximize2 
 } from 'lucide-react';
-import { NodeTelemetry, DisplacementLink, AIRiskAssessment, SystemMode } from '../types/telemetry';
+import { NodeTelemetry, DisplacementLink, AIRiskAssessment, SystemMode, TelemetryHistoryPoint } from '../types/telemetry';
 import { GisMap } from '../components/GisMap';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -19,6 +19,7 @@ interface DashboardProps {
   links: DisplacementLink[];
   riskAssessment: AIRiskAssessment;
   mode: SystemMode;
+  historyBuffer: TelemetryHistoryPoint[];
   onNavigatePage: (page: any) => void;
   onOpenHardwareModal: () => void;
 }
@@ -28,6 +29,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   links,
   riskAssessment,
   mode,
+  historyBuffer,
   onNavigatePage,
   onOpenHardwareModal,
 }) => {
@@ -35,13 +37,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const warningCount = nodes.filter(n => n.status === 'WARNING').length;
   const safeCount = nodes.filter(n => n.status === 'SAFE').length;
 
-  // Chart telemetry data format
-  const chartData = nodes.map(n => ({
-    name: n.node_id,
-    tilt: n.tilt_magnitude_deg,
-    disp: n.displacement_mm,
-    vib: n.vibration_rms,
+  // Chart telemetry data using live history buffer or current snapshot
+  const chartData = historyBuffer.length > 0 ? historyBuffer : nodes.map(n => ({
+    timestamp: new Date().toLocaleTimeString(),
+    N1_tilt: nodes.find(x => x.node_id === 'N1')?.tilt_magnitude_deg || 0,
+    N2_tilt: nodes.find(x => x.node_id === 'N2')?.tilt_magnitude_deg || 0,
+    N3_tilt: nodes.find(x => x.node_id === 'N3')?.tilt_magnitude_deg || 0,
+    N4_tilt: nodes.find(x => x.node_id === 'N4')?.tilt_magnitude_deg || 0,
+    N3_N4_link_disp: links.find(l => l.link_id === 'L34')?.relative_displacement_mm || 0,
   }));
+
 
   return (
     <div className="space-y-6 font-body">
@@ -247,25 +252,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <h3 className="text-sm font-bold font-heading text-industrial-900 dark:text-white">
               Telemetry Deformation Profiles
             </h3>
-            <span className="text-[10px] font-mono text-industrial-400">Live Snapshot</span>
+            <span className="text-[10px] font-mono text-emerald-600 font-bold animate-pulse">Live Streaming</span>
           </div>
 
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" opacity={0.4} />
-                <XAxis dataKey="name" stroke="#64748B" fontSize={11} />
-                <YAxis stroke="#64748B" fontSize={11} />
+                <XAxis dataKey="timestamp" stroke="#64748B" fontSize={10} interval="preserveStartEnd" />
+                <YAxis stroke="#64748B" fontSize={10} domain={[0, 'auto']} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', color: '#fff', fontSize: '11px' }}
                 />
-                <Line type="monotone" dataKey="tilt" stroke="#F59E0B" name="Tilt (°)" strokeWidth={2} />
-                <Line type="monotone" dataKey="disp" stroke="#EF4444" name="Displacement (mm)" strokeWidth={2} />
-                <Line type="monotone" dataKey="vib" stroke="#10B981" name="Vibration (g)" strokeWidth={2} />
+                <Line type="monotone" dataKey="N3_tilt" stroke="#F59E0B" name="Node N3 Tilt (°)" strokeWidth={2} isAnimationActive={false} />
+                <Line type="monotone" dataKey="N3_N4_link_disp" stroke="#EF4444" name="N3–N4 Displacement (mm)" strokeWidth={2} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
+
 
       </div>
 

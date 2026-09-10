@@ -9,7 +9,9 @@ import {
   Moon, 
   Bell, 
   Database,
-  Radio
+  Radio,
+  Menu,
+  X
 } from 'lucide-react';
 import { SystemMode, SystemAlert } from '../types/telemetry';
 
@@ -22,6 +24,8 @@ interface HeaderProps {
   onToggleDarkMode: () => void;
   onOpenHardwareModal: () => void;
   onOpenAlertsModal: () => void;
+  isMobileMenuOpen: boolean;
+  onToggleMobileMenu: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -32,8 +36,11 @@ export const Header: React.FC<HeaderProps> = ({
   darkMode,
   onToggleDarkMode,
   onOpenHardwareModal,
-  onOpenAlertsModal
+  onOpenAlertsModal,
+  isMobileMenuOpen,
+  onToggleMobileMenu
 }) => {
+
   const unackAlerts = alerts.filter(a => !a.acknowledged);
 
   return (
@@ -41,27 +48,39 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         
         {/* Title & Mine Operational Context */}
-        <div className="flex items-center space-x-3">
-          <div className="bg-industrial-800 dark:bg-industrial-700 text-white p-2 rounded-md shadow-sm">
-            <ShieldAlert className="h-6 w-6 text-amber-400" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold font-heading text-industrial-900 dark:text-white tracking-tight">
-                MineGuard-AI
-              </h1>
-              <span className="text-xs font-mono px-2 py-0.5 rounded bg-industrial-100 dark:bg-industrial-800 text-industrial-600 dark:text-industrial-400 border border-industrial-200 dark:border-industrial-700">
-                SIH26025
-              </span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-industrial-800 dark:bg-industrial-700 text-white p-2 rounded-md shadow-sm">
+              <ShieldAlert className="h-5 w-5 md:h-6 md:w-6 text-amber-400" />
             </div>
-            <p className="text-xs text-industrial-500 dark:text-industrial-400 font-body">
-              Surface Subsidence Early-Warning System | <span className="font-semibold text-industrial-700 dark:text-industrial-300">Jharia Coalfield &bull; Mine 04 &bull; Panel A-01</span>
-            </p>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h1 className="text-lg md:text-xl font-bold font-heading text-industrial-900 dark:text-white tracking-tight">
+                  MineGuard-AI
+                </h1>
+                <span className="text-[10px] md:text-xs font-mono px-1.5 py-0.5 rounded bg-industrial-100 dark:bg-industrial-800 text-industrial-600 dark:text-industrial-400 border border-industrial-200 dark:border-industrial-700">
+                  SIH26025
+                </span>
+              </div>
+              <p className="text-[10px] md:text-xs text-industrial-500 dark:text-industrial-400 font-body">
+                Surface Subsidence Early-Warning System | <span className="font-semibold text-industrial-700 dark:text-industrial-300">Jharia Coalfield &bull; Mine 04 &bull; Panel A-01</span>
+              </p>
+            </div>
           </div>
+
+          {/* Mobile Menu Toggle Button */}
+          <button
+            onClick={onToggleMobileMenu}
+            className="md:hidden p-2 rounded-md text-industrial-700 dark:text-industrial-300 hover:bg-industrial-100 dark:hover:bg-industrial-800 transition"
+            aria-label="Toggle Navigation Menu"
+          >
+            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
 
         {/* Status Indicators & Control Actions */}
         <div className="flex flex-wrap items-center gap-2">
+
           
           {/* Mode & Connection Status Indicator */}
           {mode === 'SIMULATION' ? (

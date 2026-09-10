@@ -25,9 +25,16 @@ export type ActivePage =
 interface SidebarProps {
   activePage: ActivePage;
   onSelectPage: (page: ActivePage) => void;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  activePage,
+  onSelectPage,
+  isMobileOpen = false,
+  onCloseMobile
+}) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'map', label: 'Live GIS Map', icon: MapPin },
@@ -40,9 +47,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
     { id: 'system', label: 'System Diagnostics', icon: Settings },
   ];
 
-  return (
-    <aside className="w-64 bg-white dark:bg-industrial-900 border-r border-industrial-200 dark:border-industrial-800 flex flex-col justify-between shrink-0 transition-colors">
-      <div className="py-4">
+  const handleNavClick = (pageId: ActivePage) => {
+    onSelectPage(pageId);
+    if (onCloseMobile) {
+      onCloseMobile();
+    }
+  };
+
+  const sidebarContent = (
+    <div className="h-full flex flex-col justify-between py-4">
+      <div>
         <div className="px-4 mb-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-industrial-400 dark:text-industrial-500 font-mono">
             Navigation Console
@@ -55,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
             return (
               <button
                 key={item.id}
-                onClick={() => onSelectPage(item.id as ActivePage)}
+                onClick={() => handleNavClick(item.id as ActivePage)}
                 className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-md text-xs font-heading font-medium transition ${
                   isActive
                     ? 'bg-industrial-800 text-white dark:bg-industrial-700 dark:text-white shadow-sm'
@@ -81,6 +95,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
           </p>
         </div>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar (hidden on mobile) */}
+      <aside className="hidden md:flex w-64 bg-white dark:bg-industrial-900 border-r border-industrial-200 dark:border-industrial-800 shrink-0 transition-colors">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Drawer Overlay */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-40 md:hidden flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={onCloseMobile}
+          />
+          {/* Mobile Sliding Panel */}
+          <div className="relative w-64 max-w-xs bg-white dark:bg-industrial-900 h-full shadow-2xl z-50 border-r border-industrial-200 dark:border-industrial-800">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
+

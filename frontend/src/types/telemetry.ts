@@ -84,3 +84,22 @@ export interface SyncQueueItem {
   created_at: string;
   synced: boolean;
 }
+
+export interface TelemetryHistoryPoint {
+  timestamp: string; // HH:mm:ss
+  fullTime: string;  // ISO string
+  N1_tilt: number;
+  N2_tilt: number;
+  N3_tilt: number;
+  N4_tilt: number;
+  N1_disp: number;
+  N2_disp: number;
+  N3_disp: number;
+  N4_disp: number;
+  N3_N4_link_disp: number;
+  N1_vib: number;
+  N2_vib: number;
+  N3_vib: number;
+  N4_vib: number;
+}
+

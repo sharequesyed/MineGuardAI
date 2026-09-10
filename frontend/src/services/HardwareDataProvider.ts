@@ -1,4 +1,4 @@
-import { SystemMode, NodeTelemetry, DisplacementLink, SystemAlert, AIRiskAssessment } from '../types/telemetry';
+import { SystemMode, NodeTelemetry, DisplacementLink, SystemAlert, AIRiskAssessment, TelemetryHistoryPoint } from '../types/telemetry';
 import { simulationEngine, SimulationScenario } from './SimulationEngine';
 import { webSerialProvider } from './WebSerialProvider';
 import { offlineStore } from './IndexedDBStore';
@@ -9,7 +9,8 @@ export type ModeChangeListener = (
   nodes: NodeTelemetry[],
   links: DisplacementLink[],
   isHardwareConnected: boolean,
-  lastPacketTime: string | null
+  lastPacketTime: string | null,
+  historyBuffer: TelemetryHistoryPoint[]
 ) => void;
 
 export class HardwareDataProvider {
@@ -17,6 +18,7 @@ export class HardwareDataProvider {
   private nodes: NodeTelemetry[] = [];
   private links: DisplacementLink[] = [];
   private alerts: SystemAlert[] = [];
+  private historyBuffer: TelemetryHistoryPoint[] = [];
   private listeners: Set<ModeChangeListener> = new Set();
 
   private isHardwareConnected: boolean = false;
@@ -44,10 +46,14 @@ export class HardwareDataProvider {
     return this.lastPacketTime;
   }
 
+  getHistoryBuffer(): TelemetryHistoryPoint[] {
+    return this.historyBuffer;
+  }
+
   subscribe(listener: ModeChangeListener): () => void {
     this.listeners.add(listener);
     // Initial notification
-    listener(this.currentMode, this.nodes, this.links, this.isHardwareConnected, this.lastPacketTime);
+    listener(this.currentMode, this.nodes, this.links, this.isHardwareConnected, this.lastPacketTime, this.historyBuffer);
     return () => {
       this.listeners.delete(listener);
     };
@@ -122,6 +128,41 @@ export class HardwareDataProvider {
     this.links = links;
     this.lastPacketTime = new Date().toISOString();
 
+    // Build real-time dynamic time-series history point
+    const now = new Date();
+    const timeLabel = now.toTimeString().split(' ')[0]; // HH:mm:ss
+
+    const n1 = nodes.find(n => n.node_id === 'N1');
+    const n2 = nodes.find(n => n.node_id === 'N2');
+    const n3 = nodes.find(n => n.node_id === 'N3');
+    const n4 = nodes.find(n => n.node_id === 'N4');
+
+    const link34 = links.find(l => l.link_id === 'L34');
+
+    const historyPoint: TelemetryHistoryPoint = {
+      timestamp: timeLabel,
+      fullTime: now.toISOString(),
+      N1_tilt: n1 ? n1.tilt_magnitude_deg : 0,
+      N2_tilt: n2 ? n2.tilt_magnitude_deg : 0,
+      N3_tilt: n3 ? n3.tilt_magnitude_deg : 0,
+      N4_tilt: n4 ? n4.tilt_magnitude_deg : 0,
+      N1_disp: n1 ? n1.displacement_mm : 0,
+      N2_disp: n2 ? n2.displacement_mm : 0,
+      N3_disp: n3 ? n3.displacement_mm : 0,
+      N4_disp: n4 ? n4.displacement_mm : 0,
+      N3_N4_link_disp: link34 ? link34.relative_displacement_mm : (n3 ? n3.displacement_mm : 0),
+      N1_vib: n1 ? n1.vibration_rms : 0,
+      N2_vib: n2 ? n2.vibration_rms : 0,
+      N3_vib: n3 ? n3.vibration_rms : 0,
+      N4_vib: n4 ? n4.vibration_rms : 0,
+    };
+
+    this.historyBuffer.push(historyPoint);
+    // Maintain maximum 40 data points in rolling history buffer
+    if (this.historyBuffer.length > 40) {
+      this.historyBuffer.shift();
+    }
+
     // Check for alerts
     this.evaluateAlerts(nodes);
 
@@ -189,9 +230,10 @@ export class HardwareDataProvider {
 
   private notifyListeners() {
     for (const listener of this.listeners) {
-      listener(this.currentMode, this.nodes, this.links, this.isHardwareConnected, this.lastPacketTime);
+      listener(this.currentMode, this.nodes, this.links, this.isHardwareConnected, this.lastPacketTime, this.historyBuffer);
     }
   }
 }
 
 export const hardwareDataProvider = new HardwareDataProvider();
+

@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { Sidebar, ActivePage } from './components/Sidebar';
 import { HardwareSelectorModal } from './components/HardwareSelectorModal';
 import { AlertsDrawerModal } from './components/AlertsDrawerModal';
+import { OnScreenAlertBanner } from './components/OnScreenAlertBanner';
 
 import { hardwareDataProvider } from './services/HardwareDataProvider';
 import { NodeTelemetry, DisplacementLink, SystemAlert, SystemMode, TelemetryHistoryPoint, Incident } from './types/telemetry';
@@ -187,6 +188,13 @@ export function App() {
       <AlertsDrawerModal
         isOpen={isAlertsModalOpen}
         onClose={() => setIsAlertsModalOpen(false)}
+        incidents={incidents}
+        onAcknowledge={handleAcknowledgeIncident}
+        onViewZone={handleViewZone}
+      />
+
+      {/* On-Screen High-Risk Web Alert Banner */}
+      <OnScreenAlertBanner
         incidents={incidents}
         onAcknowledge={handleAcknowledgeIncident}
         onViewZone={handleViewZone}

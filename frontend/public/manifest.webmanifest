@@ -1,0 +1,22 @@
+{
+  "short_name": "MineGuard",
+  "name": "MineGuard-AI Surface Subsidence Monitoring",
+  "icons": [
+    {
+      "src": "pwa-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "pwa-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#F8FAFC",
+  "theme_color": "#1E293B",
+  "display": "standalone",
+  "orientation": "any",
+  "description": "Smart India Hackathon 2026 Surface Mine Subsidence Monitoring Prototype"
+}
